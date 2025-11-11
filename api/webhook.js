@@ -16,31 +16,28 @@ export default async function handler(req, res) {
       const body = req.body;
       const change = body?.entry?.[0]?.changes?.[0]?.value;
 
-      // 1) Se è un aggiornamento di stato (sent/delivered/read/failed) loggalo e chiudi
+      // 🔹 Logga sempre gli STATUS (sent/delivered/read/failed)
       if (change?.statuses?.length) {
         const st = change.statuses[0];
         console.log("📊 STATUS:", {
           id: st.id,
-          status: st.status,        // sent, delivered, read, failed
+          status: st.status,
           timestamp: st.timestamp,
-          errors: st.errors || null // motivo se failed
+          errors: st.errors || null
         });
-        return res.status(200).json({ ok: true });
+        // Non uscire: potrebbero arrivare anche messages in altri eventi
       }
 
-      // 2) Messaggio in arrivo
+      // 🔹 Elabora i MESSAGGI IN ARRIVO
       const msg = change?.messages?.[0];
       const fromRaw = msg?.from;
       const text = msg?.text?.body;
 
       if (fromRaw && text) {
-        // normalizza il numero (solo cifre, con prefisso)
-        const to = String(fromRaw).replace(/[^0-9]/g, "");
-
-        // risposta base
+        const to = String(fromRaw).replace(/[^0-9]/g, ""); // normalizza numero
         let reply = `Hai scritto: "${text}"`;
 
-        // (opzionale) OpenAI
+        // (Opzionale) OpenAI
         try {
           if (process.env.OPENAI_API_KEY) {
             const ai = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -63,7 +60,7 @@ export default async function handler(req, res) {
           console.error("OpenAI error:", e);
         }
 
-        // 3) Invio risposta (API v22)
+        // 🔹 Invio risposta (API v22)
         const url = `https://graph.facebook.com/v22.0/${process.env.WHATSAPP_PHONE_ID}/messages`;
         const payload = {
           messaging_product: "whatsapp",
@@ -94,4 +91,5 @@ export default async function handler(req, res) {
     return res.status(500).send("Errore interno del server");
   }
 }
+
 
